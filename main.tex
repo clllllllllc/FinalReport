@@ -1,0 +1,624 @@
+\documentclass[11pt]{article}
+
+\usepackage{amsmath, amssymb, amsthm, graphicx, geometry, booktabs, hyperref, float, xcolor}
+
+\geometry{margin=1in}
+
+\title{Self-Organized Criticality in the Bak--Tang--Wiesenfeld Model}
+\author{Kevin Wu \\ COMP90072 -- Complex Systems}
+\date{\today}
+
+\graphicspath{{figures/}{./}}
+
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\calC}{\mathcal{C}}
+\newcommand{\calS}{\mathcal{S}}
+
+\newcommand\myworries[1]{\textcolor{red}{#1}}
+
+% Safe figure command: compiles even if the image file is missing.
+\newcommand{\plotfigure}[3]{
+\begin{figure}[H]
+    \centering
+    \IfFileExists{#2}{
+        \includegraphics[width=0.78\textwidth]{#2}
+    }{
+        \fbox{
+        \parbox[c][5cm][c]{0.78\textwidth}{
+            \centering
+            Missing figure: \texttt{#2}\\[0.5em]
+            #3
+        }}
+    }
+    \caption{#1}
+\end{figure}
+}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This report studies self-organized criticality in the Bak--Tang--Wiesenfeld sandpile model. 
+The model contains two-dimensional finite lattice and driven by adding grains of sand, and unstable sites topples grains to their nearest neighbours. 
+The simulation records avalanche statistics including the number of topples, avalanche area, boundary loss, and avalanche length. 
+The results are interpreted in terms of its power law like avalanche distributions. 
+The report also discusses there results and the Abelian property of the model.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+% ----------------------
+\section{Introduction}
+
+\subsection{Background}
+
+Complex systems are systems composed of many components that interact with each other. 
+Examples includes Earth's global climate, organisms, and the human brain.
+
+The Bak–Tang–Wiesenfeld (BTW) sandpile model is a simple example of such a system. 
+The model consists of a lattice of sites, each containing a number of grains of sand. 
+Grains are slowly added to the lattice. 
+When the number of grains at a site reaches a threshold, that site topples and redistributes grains to neighbouring sites. 
+This then can trigger a cascade of further topples called an avalanche. 
+Although the microscopic update rule is simple, the model produces avalanches of many different sizes and therefore gives a clear setting in which to study self-organized criticality.
+
+\subsection{Self-Organized Criticality}
+
+Self-organized criticality (SOC) describes the tendency of certain kind of systems(typically slowly driven) to evolve toward a critical state without the need to finely tune parameters of the system. 
+
+The key features of SOC are:
+
+\begin{itemize}
+    \item \textbf{Attractor states.} After an initial phase, the system approaches a statistically stable state. 
+    The configuration continue to change, but statistics such as average height and avalanche distributions converges.
+
+    \item \textbf{Scale invariance.} Events occur over many different scales. 
+    There is no single characteristic avalanche size.
+
+\end{itemize}
+
+\subsection{Aim}
+
+The aim of this project is to simulate the BTW model and study whether it exhibits the expected features of SOC. 
+This includes:
+
+\begin{itemize}
+    \item to implement the standard BTW model on a finite two-dimensional lattice;
+    \item to measure statistics such as topples, area, loss, and length;
+    \item to compare the observed avalanche distributions with the expected behaviour;
+    \item to discuss extensions of the model and predict how they affect the statistics.
+\end{itemize}
+
+\subsection{Solution to Question 1: Scale Invariance and Power Laws}
+
+A scale-invariant distribution is one whose shape is unchanged by rescaling. 
+Suppose \(P(x)\) is the frequency density of events of size \(x\). 
+Scale invariance means that replacing \(x\) by \(\lambda x\) changes the distribution only by a multiplicative factor depending on \(\lambda\):
+\[
+    P(\lambda x) = \lambda^{\Delta}P(x).
+\]
+Setting \(x=1\) gives \(P(\lambda)=\lambda^{\Delta}P(1)\), so
+\[
+    P(\lambda x)=\frac{P(\lambda)P(x)}{P(1)}.
+\]
+Thus \(P\) is multiplicative up to normalization. The only continuous distribution that satisfy this condition is 
+that it's logarithm is uniformally distributed.
+Therefore a scale invariant system is associated with the power law.
+
+
+\section{Bak--Tang--Wiesenfeld Model}
+
+\subsection{Model Definition}
+
+The simulation uses a finite rectangular lattice
+\[
+    \Gamma = \{1,\ldots,N\}\times \{1,\ldots,M\}.
+\]
+Each site \(x=(i,j)\in \Gamma\) has an integer height
+\[
+    p_t(x) = p_t(i,j) \in \Z_{\geq 0},
+\]
+which represents the number of grains at that site.
+
+At each time step \(t\), one grain is added to a randomly selected site:
+\[
+    p_t(i,j) \leftarrow p_{t-1}(i,j)+1.
+\]
+If a site reaches the threshold
+\[
+    p_t(i,j) \geq 4,
+\]
+then it is unstable. 
+A toppling at an unstable site removes four grains from that site and sends one grain to each of the four neighbours:
+\[
+    p_t(i,j) \leftarrow p_t(i,j)-4,
+\]
+\[
+    p_t(i\pm1,j\pm1) \leftarrow p_t(i\pm1,j\pm1)+1,
+\]
+whenever these sites exist in the lattice.
+
+If a grain is sent outside the lattice, it is removed from the system. 
+
+\subsection{Solution to Question 2: Why the BTW Model Exhibits SOC}
+The BTW model satisfies the main requirements for SOC in the following ways.
+
+\begin{itemize}
+    \item It's a slowly driven system as the external driving force is just the addition of a single grain.
+    \item It self organizes as no external parameter is tuned to a critical value.
+    \item It is dissipative as grains can leave the system at the boundary
+\end{itemize}
+
+
+\subsection{Solution to Question 3: Importance of Finite Boundaries}
+
+Finite open boundaries are important because they provide dissipation. 
+Every time a boundary site topples, some grains that would have gone to off-lattice neighbours are deleted.  This allows the system to balance input and output.
+
+Another reason is that it takes too much resources to simulate infinite boundaries, as the sand will continue to spread out and takes up more space.
+\subsection{Avalanches}
+
+An avalanche is the chain reaction caused by adding one grain. 
+The simulation records four avalanche features:
+
+\begin{itemize}
+    \item \textbf{Topples.} The total number of topplings in the avalanche.
+
+    \item \textbf{Area.} The number of distinct sites that topple at least once.
+
+    \item \textbf{Loss.} The total number of grains lost through the open boundary.
+
+    \item \textbf{Length.} The spatial extent of the avalanche. 
+    In this implementation, length is defined as the maximum Manhattan distance from the grain-addition site to any toppled site:
+    \[
+        \ell = \max_{x\in A} \|x-x_0\|_1
+        =
+        \max_{(i,j)\in A} \left(|i-i_0|+|j-j_0|\right),
+    \]
+    where \(x_0=(i_0,j_0)\) is the grain-addition site and \(A\) is the set of toppled sites.
+\end{itemize}
+
+The Manhattan metric is a natural choice because the BTW model only allows motion along horizontal and vertical nearest neighbour edges. 
+It therefore matches the geometry of the toppling rule better than Euclidean distance.
+
+\subsection{Solution to Question 4: Expected Average Height}
+
+The average height of the lattice is
+\[
+    \langle p_t \rangle
+    =
+    \frac{1}{NM}\sum_{i, j}^{} p_t(i,j).
+\]
+It's clear that we have an upper bound of 3. Since each site has heights of 0, 1, 2, 3.
+Assume evenly distributed, the average height would be
+\[
+    \frac{0 + 1 + 2 + 3}{4} = 1.5.
+\]
+However this assumption isn't true as adding sand will result the larger heights being more common in the system. So a more reasonable guess will be around $2$ (Turned out to be around 2.1).
+
+\subsection{Steady State and Stationarity}
+
+Starting from an empty lattice, the system first undergoes a transient phase. 
+During this phase sand is dropped but not much toppling is occurring due to low average height of the system. Not much grains are lost at this phase.
+
+Eventually, avalanches become frequent enough that the average boundary loss balances the one grain added per step. The system then enters a statistically stationary state. 
+
+\subsection{Solution to Question 5: Steady State, Statistical Stationarity, and Equilibrium}
+
+A \textbf{steady state} means that the dynamic condition where system properties remain constant over time due to balanced input and output.
+
+A \textbf{statistically stationary state} means that statistical quantities of features do not change over time. 
+
+An \textbf{equilibrium state} means there is no net flow through the system and that detailed balance holds. 
+In an equilibrium system, there is no persistent input and output of mass or energy.
+
+The BTW model is not an equilibrium system because of the continuous additions of grains and dissipation changing the layout.
+It is better described as a statistically stationary state, in which the following quantities:
+
+\begin{itemize}
+    \item average height;
+    \item average loss per grain addition;
+    \item avalanche toppling distribution;
+    \item avalanche area distribution;
+    \item avalanche length distribution;
+\end{itemize}
+
+remains approximately constant.
+
+\subsection{Solution to Question 6: Time Sampling, Ensemble Sampling, and Ergodicity}
+
+Sampling a system over time means observing one long simulation trajectory.
+Sampling an ensemble means running many independent systems and observing their configurations at comparable stages.
+
+These two procedures are equivalent only under an ergodicity assumption. (Not Done)
+
+\section{Abelian Property}
+
+\subsection{Definition}
+
+The BTW model is Abelian because the final stable configuration does not depend on the order in which unstable sites are toppled. 
+If multiple sites are unstable at the same time, one may topple them in any order and still arrive at the same final stable state.
+
+\subsection{Mathematical Formulation}
+
+Let \(\Gamma\subset \Z^2\) be the finite lattice, and let
+\[
+    U_\Gamma = \{z:\Gamma\to \Z_{\geq 0}\}
+\]
+be the configuration space. 
+The stable configurations form the subset
+\[
+    S_\Gamma =\{p\in\calC: p(x)<4 \text{ for all } x\in\Gamma\}.
+\]
+
+For \(x,y\in \Gamma\), define the BTW toppling matrix by
+\[
+    \Delta(x,y)
+    =
+    \begin{cases}
+        -2d, & x=y,\\
+        1, & x\text{ and }y\text{ are nearest neighbours},\\
+        0, & \text{otherwise}.
+    \end{cases}
+\]
+For a finite lattice with open boundaries, neighbours outside the lattice are not included. 
+Thus boundary topplings lose grains.
+
+A toppling at site \(x\) maps a configuration \(z\) to a new configuration \(T_x z\) given by
+\[
+    (T_xp)(y)=p(y)+\Delta(x,y),
+\]
+
+\subsection{Solution to Question 9: Meaning of the Toppling Matrix Conditions}
+
+The general toppling matrix conditions are:
+
+\[
+    \Delta(x,y)=\Delta(y,x)\geq 0
+    \quad \text{for } x\neq y,
+\]
+\[
+    \Delta(x,x)<0,
+\]
+\[
+    \sum_{y\in\Gamma}\Delta(x,y)\leq 0,
+\]
+\[
+    \sum_{x,y\in\Gamma}\Delta(x,y)<0.
+\]
+
+Their meanings are as follows.
+
+\begin{itemize}
+    \item The first equation means two things. The  $\Delta(y,x)\geq 0$ part states that if the point is not the toppling point, the height should not decrease. The $\Delta(x,y)=\Delta(y,x)$ part states that if topping at point $x$ affects point $y$, toppling at point $y$ should affect point $x$ as well. These are all core properties of the model.
+
+    \item  The second condition \(\Delta(x,x)<0\) means that toppling at \(x\) reduces the height at \(x\).  Without this, a toppling would not stabilize the unstable site.
+
+    \item The condition
+    \[
+        \sum_y \Delta(x,y)\leq 0
+    \]
+    means that toppling does not create grains. 
+
+    \item The condition
+    \[
+        \sum_{x,y}\Delta(x,y)<0
+    \]
+    means that somewhere in the system there is dissipation. 
+    For the open-boundary BTW model, this dissipation occurs at the boundary. 
+\end{itemize}
+
+\subsection{Solution to Question 10: BTW Toppling Matrix and Threshold}
+
+For the two-dimensional square lattice, each interior site has four nearest neighbours. 
+The BTW toppling matrix is
+\[
+    \Delta(x,y)
+    =
+    \begin{cases}
+        -2d, & x=y,\\
+        1, & x\sim y,\\
+        0, & \text{otherwise}.
+    \end{cases}
+\]
+We are only considering the case for $d = 2$, however this generalizes to all $d > 2$.
+This means that toppling at \(x\) removes $2d$ grains from \(x\) and adds one grain to each neighbour.
+
+The stability threshold is
+\[
+    p_c = 2d.
+\]
+A site is stable if \(p(x)<2d\), and unstable if \(p(x)\geq 2d\).
+
+The matrix satisfies the required conditions:
+
+\begin{itemize}
+    \item If \(x\neq y\), then \(\Delta(x,y)\) is either \(1\) for neighbours or \(0\) otherwise, so it is non-negative. 
+    It is symmetric because the neighbouring property is symmetric.
+
+    \item The diagonal entries are \(\Delta(x,x)=-2d<0\).
+
+    \item For an interior site, the sum is
+    \[
+        -2d+1+1+1+1>0.
+    \]
+    For an edge site, the sum is negative because fewer than four neighbours lie inside the lattice. 
+    For example, a non-corner edge site has sum
+    \[
+        -2d+3=-1.
+    \]
+    A corner has sum
+    \[
+        -2d+2=-2.
+    \]
+    Therefore \(\sum_y \Delta(x,y)\leq 0\).
+
+    \item Since boundary sites have negative sum, the total sum over the finite lattice is strictly negative:
+    \[
+        \sum_{x,y}\Delta(x,y)<0.
+    \]
+\end{itemize}
+
+\subsection{Solution to Question 11: Commutation of Toppling Operators}
+
+Let \(T_x\) and \(T_y\) be toppling operators at sites \(x\) and \(y\). 
+Assume both topplings are legal for the current unstable configuration \(z\). 
+Then
+\[
+    (T_xz)(w)=z(w)+\Delta(x,w),
+\]
+and
+\[
+    (T_yT_xz)(w)
+    =
+    z(w)+\Delta(x,w)+\Delta(y,w).
+\]
+Similarly,
+\[
+    (T_xT_yz)(w)
+    =
+    z(w)+\Delta(y,w)+\Delta(x,w).
+\]
+Since addition is commutative,
+\[
+    z(w)+\Delta(x,w)+\Delta(y,w)
+    =
+    z(w)+\Delta(y,w)+\Delta(x,w).
+\]
+Therefore
+\[
+    T_yT_xz=T_xT_yz.
+\]
+
+
+\subsection{Solution to Question 12: Well-Defined Stabilization Operator}
+
+\myworries{Need to add solution to this}
+
+
+\section{Simulation Methodology}
+
+\subsection{Implementation}
+
+The simulation is implemented using an Python class for the Abelian sandpile. 
+The lattice heights are stored in a two-dimensional NumPy array. 
+The code is designed for large simulations such as \(100\times 100\) lattices over approximately \(100000\) grain additions.
+
+The main implementation choices are:
+
+\begin{itemize}
+    \item \textbf{Grid storage.} The sandpile is stored as an integer array \texttt{grid} of shape \((W,H)\).
+
+    \item \textbf{Threshold.} The default threshold is \(4\), matching the standard two-dimensional BTW model.
+
+    \item \textbf{Neighbour precomputation.} The valid neighbours of each lattice site are precomputed, avoiding repeated boundary checks.
+
+    \item \textbf{Boundary loss precomputation.} For each site, the number of missing neighbours is precomputed. 
+    This determines how many grains are lost when that site topples.
+
+    \item \textbf{Unstable-site set.} The code maintains a set of unstable sites rather than repeatedly scanning the whole grid.
+
+    \item \textbf{Batch toppling.} If a site has height \(p(i,j)\), it is toppled
+    \[
+        q=\left\lfloor \frac{p(i,j)}{4}\right\rfloor
+    \]
+    times in one operation. 
+    This is faster than toppling the same site one step at a time.
+\end{itemize}
+
+\subsection{Algorithm}
+
+For each simulation step:
+
+\begin{enumerate}
+    \item Select a site \(x_0=(i_0,j_0)\), usually uniformly at random.
+    \item Add one grain to \(x_0\).
+    \item If \(x_0\) is unstable, add it to the unstable set.
+    \item While the unstable set is non-empty:
+    \begin{enumerate}
+        \item remove an unstable site \(x\);
+        \item compute \(q=\lfloor z(x)/4\rfloor\);
+        \item subtract \(4q\) grains from \(x\);
+        \item add \(q\) grains to each valid neighbour;
+        \item add the corresponding boundary loss;
+        \item record that \(x\) toppled;
+        \item add any newly unstable neighbours back into the unstable set.
+    \end{enumerate}
+    \item Once all sites are stable, record the avalanche statistics.
+\end{enumerate}
+
+The Abelian property guarantees that the final stable configuration is independent of the order in which the unstable set is processed. 
+
+\subsection{Data Collection}
+
+For each avalanche, the code records:
+
+\begin{itemize}
+    \item \textbf{Topples:} increased by \(q\) whenever a site batch-topples \(q\) times.
+
+    \item \textbf{Area:} computed as the number of distinct sites that toppled at least once.
+
+    \item \textbf{Loss:} increased by \(q\) times the number of missing neighbours at the toppled site.
+
+    \item \textbf{Length:} computed as the maximum Manhattan distance from the grain-addition site to any toppled site.
+\end{itemize}
+
+These values are stored as arrays or a table so that they can be plotted after the simulation. 
+
+\section{Results}
+
+\subsection{Avalanche Distributions}
+
+\plotfigure
+{Distribution of avalanche topples.}
+{topples_log_binned_density.png}
+
+\plotfigure
+{Distribution of avalanche area.}
+{area_log_binned_density.png}
+
+\plotfigure
+{Distribution of boundary loss.}
+{loss_log_binned_density.png}
+
+\plotfigure
+{Distribution of avalanche length.}
+{length_log_binned_density.png}
+
+The avalanche distributions are strongly left-skewed.  Most grain added induces small avalanches and occasionally induces large ones. The distribution is consistent with the power law:
+\[
+    P(x)\sim x^{-\alpha}.
+\]
+In a finite lattice, the power-law behaviour cannot continue indefinitely. 
+Due to the limiting grid size, the tail of the power function has been cut off(As evident in the plots).
+The key evidence of the power law is the linear segment in the middle of the log log plot ignoring the cutoff at the very end.
+
+\subsection{Solution to Question 7: Distribution Type and Fitting}
+
+The recorded avalanche frequencies should be plotted for topples, area, loss, and length. 
+The expected results are:
+
+\begin{itemize}
+    \item \textbf{Topples:} heavy-tailed and approximately power-law-like, with many small avalanches and rare large avalanches.
+
+    \item \textbf{Area:} also heavy-tailed and power-law-like, though with a finite-size cutoff at \(WH\).
+
+    \item \textbf{Loss:} often has many small or zero values because avalanches must reach the boundary to lose grains. 
+    Its distribution is still typically right-skewed.
+
+    \item \textbf{Length:} heavy-tailed up to the maximum possible lattice distance.
+\end{itemize}
+
+A simple power-law fit can be obtained by fitting a line to the log log frequency plot:
+\[
+    \log P(x)=c-\alpha \log x.
+\]
+The exponent is then the negative slope:
+\[
+    \alpha=-\text{slope}.
+\]
+\myworries{Need to find fit}
+
+
+\subsection{Scaling Behaviour}
+
+The results support scale invariance if avalanches occur over many sizes and the log--log plots show approximately linear scaling regions. 
+
+We can also construct plots to compare the results from simulation from different sizes.
+
+\myworries{Add graphs comparing the stats from different sizes plotted onto 1 graph}
+
+
+\subsection{Correlations}
+
+\plotfigure
+{Scatter plot of avalanche area against number of topples.}
+{area_vs_topples.png}
+
+\plotfigure
+{Scatter plot of avalanche length against avalanche area.}
+{length_vs_area.png}
+
+\subsection{Solution to Question 8: Expected and Observed Correlations}
+
+The four avalanche features are expected to be correlated, but not identical.
+
+\begin{itemize}
+    \item \textbf{Topples and area} should be strongly positively correlated. 
+    A larger avalanche usually involves more sites and more topplings. 
+
+    \item \textbf{Area and length} should also be positively correlated. 
+    Avalanches that spread farther tend to visit more sites. 
+
+    \item \textbf{Loss and length} should be positively correlated because grains are lost only when avalanches reach the boundary. 
+    Avalanches with higher length are more likely to interact with the boundary.
+
+    \item \textbf{Loss and topples} should also be positively correlated, since larger avalanches have more opportunities to reach the boundary and lose grains.
+\end{itemize}
+
+
+
+\section{Model Extensions}
+
+\section{Conclusion}
+
+I'll have to think of one
+
+
+\begin{thebibliography}{9}
+
+\bibitem{btw1987}
+P. Bak, C. Tang, and K. Wiesenfeld,
+\emph{Self-organized criticality: An explanation of the 1/f noise},
+Physical Review Letters, 59(4), 381--384, 1987.
+
+\bibitem{btw1988}
+P. Bak, C. Tang, and K. Wiesenfeld,
+\emph{Self-organized criticality},
+Physical Review A, 38(1), 364--374, 1988.
+
+\bibitem{dhar1990}
+D. Dhar,
+\emph{Self-organized critical state of sandpile automaton models},
+Physical Review Letters, 64(14), 1613--1616, 1990.
+
+\bibitem{newman2005}
+M. E. J. Newman,
+\emph{Power laws, Pareto distributions and Zipf's law},
+Contemporary Physics, 46(5), 323--351, 2005.
+
+\bibitem{soc_sciencedirect}
+Elsevier,
+\emph{Self-Organized Criticality},
+ScienceDirect Topics.
+Available at:
+\url{https://www.sciencedirect.com/topics/materials-science/self-organized-criticality},
+accessed 15 May 2026.
+
+\bibitem{powerlaw_scale}
+Math StackExchange,
+\emph{Scale invariance of power law distribution}.
+Available at:
+\url{https://math.stackexchange.com/questions/140962/scale-invariance-of-power-law-distribution},
+accessed 15 May 2026.
+
+\bibitem{bak_review}
+P. Bak, K. Christensen, L. Danon, and T. Scanlon,
+\emph{Unified scaling law for earthquakes},
+arXiv preprint cond-mat/0207674, 2002.
+Available at:
+\url{https://arxiv.org/pdf/cond-mat/0207674}.
+
+\bibitem{todo_notes}
+TeX StackExchange,
+\emph{How to add TODO notes?}
+Available at:
+\url{https://tex.stackexchange.com/questions/9796/how-to-add-todo-notes},
+accessed 15 May 2026.
+
+\end{thebibliography}
+
+\end{document}
